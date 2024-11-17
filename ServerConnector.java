@@ -7,15 +7,15 @@ public class ServerConnector {
 	String url, user, pwd;
 	Connection connection;
 	ServerConnector(){
-		url= "jdbc:mysql://localhost:3306/users";
+		url= "jdbc:mysql://localhost:3306/msec";
 		user= "root";
-		pwd= "harisgsk";
+		pwd= "root";
 		connection= null;
 	}
 	ServerConnector(String dbname){
-		url= "jdbc:mysql://localhost:3306/"+dbname;
+		url= "jdbc:mysql://localhost:3306/msec";
 		user= "root";
-		pwd= "harisgsk";
+		pwd= "root";
 	}
 	public void connect(){
 		
@@ -62,8 +62,22 @@ public class ServerConnector {
 			return rs;
 		}
 		catch(SQLException e) {
+            System.err.println(e);
 			JOptionPane.showMessageDialog(null,"Error when trying to execute query!");
 			return null;
+		}
+	}
+    public int executeUpdates(String query) {
+		try {
+			connection= DriverManager.getConnection(url, user, pwd);
+			PreparedStatement st= connection.prepareStatement(query);
+			st.executeUpdate();
+            return 0;
+		}
+		catch(SQLException e) {
+            System.err.println(e);
+			JOptionPane.showMessageDialog(null,"Error when trying to execute query!");
+			return 1;
 		}
 	}
 }

@@ -1,6 +1,8 @@
 
 package stutor;
 
+import java.time.LocalDate;
+
 import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.sql.ResultSet;
@@ -157,11 +159,6 @@ public class TeacherHome extends JFrame {
 		JFileChooser fileChooser = new JFileChooser();
         fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
 		JButton fileButton = new JButton("Select File");
-		// JFileChooser chooseFile = new JFileChooser();
-		// chooseFile.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files", "txt"));
-		// JLabel fLabel=new JLabel("Enter title : ");
-		// JTextField finp=new JTextField();
-		// JButton fileSel = new JButton("Submit");
 		JLabel dummy=new JLabel();
 		JPanel panel_2_2 = new JPanel(new GridLayout(1, 1, 50, 50 ));
 		panel_2_2.add(fileButton);
@@ -194,21 +191,14 @@ public class TeacherHome extends JFrame {
 				ServerConnector stt=new ServerConnector();
 				System.out.println(username);
 				String tf=titleField.getText();
-				userID="23bcs108";
-				String qrr="insert into notes(name, id, date) values('"+tf+"'','"+userID+"'','2024-01-13')";
+				String qrr="insert into notes(name, id, date) values('"+tf+"','"+userID+"','"+LocalDate.now()+"');";
 				System.out.println(qrr);
-				ResultSet ddt=stt.executeQuery(qrr);
+				stt.executeUpdates(qrr);
 			});
 		
 		} catch (Exception e) {
 			System.out.print("noooooo");
 		}
-		
-		// JPanel panel_2_3 = new JPanel(new GridLayout(3,2));
-		// panel_2_3.add(fLabel);
-		// panel_2_3.add(finp);
-		// panel_2_2.add(fileSel);
-		// panel_2.add(panel_2_3);
 
 	}
 
