@@ -1,15 +1,30 @@
+
 package stutor;
 
 import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+
+import java.io.File;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JButton;
+import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+
+import com.mysql.cj.protocol.Resultset;
+import com.mysql.cj.xdevapi.Statement;
+
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
+
+import javax.swing.JFileChooser;
 import javax.swing.JTabbedPane;
+import javax.swing.JTable;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
@@ -95,7 +110,7 @@ public class TeacherHome extends JFrame {
 		JPanel panel_1 = new JPanel();
 		tabbedPane.addTab("Classroom", null, panel_1, null);
 		
-		JPanel panel_2 = new JPanel();
+		JPanel panel_2 = new JPanel(new BorderLayout());
 		tabbedPane.addTab("Notes", null, panel_2, null);
 		
 		JPanel panel_3 = new JPanel();
@@ -110,6 +125,91 @@ public class TeacherHome extends JFrame {
 		JLabel lblWelcomeBackUser = new JLabel("Dr. "+username + " | Teacher");
 		contentPane.add(lblWelcomeBackUser, BorderLayout.NORTH);
 		
+
+
+		//Notes
+		
+		try{
+			ServerConnector ncon = new ServerConnector();
+			ResultSet nres=ncon.executeQuery("select * from notes");
+
+			ArrayList<String> nname = new ArrayList<String>();
+			ArrayList<String> ndou = new ArrayList<String>();
+			while (nres.next()) { 
+				nname.add(nres.getString("name"));
+				ndou.add(nres.getString("date"));
+			}
+			int rows = nname.size();
+			String[][] notesData = new String[rows][2];
+			for (int i = 0; i < rows; i++) {
+				notesData[i][0] = nname.get(i);  // First column - Name
+				notesData[i][1] = ndou.get(i);  // Second column - Date of upload
+			}
+			String tableTitle[]={"Name", "Date of upload"};
+			JTable notesTable = new JTable(notesData, tableTitle);
+			panel_2.add(notesTable, BorderLayout.CENTER);
+
+			
+		}catch(SQLException e){
+			System.err.println("SQLEXception");
+		}		
+
+		JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+		JButton fileButton = new JButton("Select File");
+		// JFileChooser chooseFile = new JFileChooser();
+		// chooseFile.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Text Files", "txt"));
+		// JLabel fLabel=new JLabel("Enter title : ");
+		// JTextField finp=new JTextField();
+		// JButton fileSel = new JButton("Submit");
+		JLabel dummy=new JLabel();
+		JPanel panel_2_2 = new JPanel(new GridLayout(1, 1, 50, 50 ));
+		panel_2_2.add(fileButton);
+		JLabel titleLabel = new JLabel("Enter a title:");
+		titleLabel.setFont(new Font("Ubuntu", Font.PLAIN, 20));
+        panel_2_2.add(titleLabel);
+		JPanel panel2_2_e =  new JPanel(new GridLayout());
+
+        JTextField titleField = new JTextField();
+		JButton nupload=new JButton("Upload");
+		
+        panel_2_2.add(titleField);
+		panel_2_2.add(nupload);
+		
+		panel_2.add(panel_2_2, BorderLayout.SOUTH);
+		fileButton.addActionListener(e -> {
+            int result = fileChooser.showOpenDialog(this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                String fileName = selectedFile.getName();  // Get the file name
+                JOptionPane.showMessageDialog(this, "Selected File: " + fileName);
+            } else {
+                JOptionPane.showMessageDialog(this, "No file selected.");
+            }
+        });
+		
+
+		try {
+			nupload.addActionListener(e ->{
+				ServerConnector stt=new ServerConnector();
+				System.out.println(username);
+				String tf=titleField.getText();
+				userID="23bcs108";
+				String qrr="insert into notes(name, id, date) values('"+tf+"'','"+userID+"'','2024-01-13')";
+				System.out.println(qrr);
+				ResultSet ddt=stt.executeQuery(qrr);
+			});
+		
+		} catch (Exception e) {
+			System.out.print("noooooo");
+		}
+		
+		// JPanel panel_2_3 = new JPanel(new GridLayout(3,2));
+		// panel_2_3.add(fLabel);
+		// panel_2_3.add(finp);
+		// panel_2_2.add(fileSel);
+		// panel_2.add(panel_2_3);
+
 	}
 
 }
