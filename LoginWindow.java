@@ -12,8 +12,8 @@ public class LoginWindow extends JFrame {
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
 	private JTextField unameField;
-	private JTextField passwordField;
-
+	private JPasswordField passwordField;
+	private boolean isLoggedIn;
 	/**
 	 * Launch the application.
 	 */
@@ -63,32 +63,21 @@ public class LoginWindow extends JFrame {
 		JPanel row2= new JPanel();
 		JLabel lblPassword = new JLabel("Password: ");
 		row2.add(lblPassword);
-		passwordField = new JTextField();
+		passwordField = new JPasswordField();
 		passwordField.setColumns(10);
 		row2.add(passwordField);
 		
 		JPanel row3= new JPanel();
 		JButton btnLogin = new JButton("Login");
+		JButton btnForgotPasswd = new JButton("Forgot password?");
 		btnLogin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-					JOptionPane.showMessageDialog(null,"Hello, "+ unameField.getText()+". Logging in...");
-					ServerConnector loginConn = new ServerConnector(); //defaults to user login db
-					loginConn.connect();
-					String resp= loginConn.loginManager(unameField.getText(), passwordField.getText());
-					if(resp.contains("student")) {
-						StudentHome.username= resp.replace("student", "");
-						StudentHome.userID= unameField.getText(); 
-						StudentHome.main(null);
-						setVisible(false);
-					}
-					else if(resp.contains("teacher")) {
-						TeacherHome.username= resp.replace("teacher", "");
-						TeacherHome.userID= unameField.getText();
-						TeacherHome.main(null);
-						setVisible(false);
-					}
-					else
-						JOptionPane.showMessageDialog(null, "Invalid username/password!");
+					login();
+				}
+		});
+		btnForgotPasswd.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+					forgotPasswd();
 				}
 		});
 		row3.add(btnLogin);
@@ -102,5 +91,29 @@ public class LoginWindow extends JFrame {
 		
 		JLabel lblKeepYourPassword = new JLabel("Keep your password secure. In case of issues, contact admin.");
 		panel_2.add(lblKeepYourPassword);
+		panel_2.add(btnForgotPasswd);
+	}
+	void login() {
+		JOptionPane.showMessageDialog(null,"Hello, "+ unameField.getText()+". Logging in...");
+		ServerConnector loginConn = new ServerConnector(); //defaults to user login db
+		loginConn.connect();
+		String resp= loginConn.loginManager(unameField.getText(), passwordField.getText());
+		if(resp.contains("student")) {
+			StudentHome.username= resp.replace("student", "");
+			StudentHome.userID= unameField.getText(); 
+			StudentHome.main(null);
+			setVisible(false);
+		}
+		else if(resp.contains("teacher")) {
+			TeacherHome.username= resp.replace("teacher", "");
+			TeacherHome.userID= unameField.getText();
+			TeacherHome.main(null);
+			setVisible(false);
+		}
+		else
+			JOptionPane.showMessageDialog(null, "Invalid username/password!");
+	}
+	void forgotPasswd() {
+		JOptionPane.showMessageDialog(null, "Please contact admin directly to reset your password.\nKeep your password secure at all times!", "User guidance", JOptionPane.WARNING_MESSAGE);;
 	}
 }
