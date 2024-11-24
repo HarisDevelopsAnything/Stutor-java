@@ -44,8 +44,7 @@ public class NewTeacher extends JFrame {
          * Launch the application.
          */
         public static void main(String[] args) {
-        		userdataConn= new ServerConnector("user_data");
-        		userConn= new ServerConnector();  //default to normal login db
+        		
                 EventQueue.invokeLater(new Runnable() {
                         public void run() {
                                 try {
@@ -62,6 +61,8 @@ public class NewTeacher extends JFrame {
          * Create the frame.
          */
         public NewTeacher() {
+        	userdataConn= new ServerConnector("user_data");
+    		userConn= new ServerConnector();  //default to normal login db
                 setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 setTitle("Create new teacher");
                 setBounds(100, 100, 600, 450);
@@ -278,12 +279,12 @@ public class NewTeacher extends JFrame {
         	if(loginID.getText().length()==5) {
         		if(firstName.getText().length()!=0) {
         			if((int)age.getValue()>25 && (int)age.getValue()<100) {
-        				if(teacherID.getText().length()==8) {
+        				if(teacherID.getText().length()==5) {
         					if(mobNo.getText().length()==10) {
         						if((email.getText().endsWith("@gmail.com") || email.getText().endsWith("@outlook.com") || email.getText().endsWith("@mepcoeng.ac.in")) && !email.getText().contains(" ")) {
         								if(passwordCheck(passwordField.getText())) {
         									if((int)exp.getValue()>=0) {
-        										
+        										addUser();
         									}
         									else
         										JOptionPane.showMessageDialog(null, "Experience can't be negative!");
@@ -298,7 +299,7 @@ public class NewTeacher extends JFrame {
         						JOptionPane.showMessageDialog(null, "Invalid mobile number!");
         				}
         				else
-        					JOptionPane.showMessageDialog(null, "Roll no. must be 8 characters!");
+        					JOptionPane.showMessageDialog(null, "Roll no. must be 5 characters!");
         			}
         			else
         				JOptionPane.showMessageDialog(null, "Age is invalid!");
@@ -313,11 +314,11 @@ public class NewTeacher extends JFrame {
         	
         	try {
         		String des="student";
-        		boolean loginc= userConn.executeUpdates("insert into students () values ('"+loginID.getText()+"','"+firstName.getText()+"','"+passwordField.getText()+"');");
-        		boolean studentc= userdataConn.executeUpdates("insert into teacher (teacherid,exp,sal,dept,classes) values ('"+loginID.getText()+"','"+sec.getSelectedItem()+"', 0, 0.0, '"+branch.getSelectedItem()+"');");
-        		boolean commonc= userdataConn.executeUpdates("insert into common (name,age,addr,phno,email,gender,type,uid) values ('"+firstName.getText()+" "+lastName.getText()+"',"+age.getValue()+",'"+addr.getText()+"','"+mobNo.getText()+"','"+email.getText()+"','"+((String) gender.getSelectedItem()).charAt(0)+"','"+des.toUpperCase().charAt(0)+"','"+loginID.getText()+"');");
-        		if(loginc && studentc && commonc) {
-        			JOptionPane.showMessageDialog(null, "Student "+firstName.getText()+" "+lastName.getText()+" added successfully!");
+        		boolean loginc= userConn.executeUpdates("insert into teachers () values ('"+loginID.getText()+"','"+firstName.getText()+"','"+passwordField.getText()+"');");
+        		boolean teacherc= userdataConn.executeUpdates("insert into teacher (teacherid,exp,sal,dept,classes) values ('"+loginID.getText()+"',"+exp.getValue()+", "+sal.getText()+",'"+branch.getSelectedItem()+"', 'A,B,C');");
+        		boolean commonc= userdataConn.executeUpdates("insert into common (name,age,addr,phno,email,gender,type,uid,father) values ('"+firstName.getText()+" "+lastName.getText()+"',"+age.getValue()+",'"+addr.getText()+"','"+mobNo.getText()+"','"+email.getText()+"','"+((String) gender.getSelectedItem()).charAt(0)+"','"+des.toUpperCase().charAt(0)+"','"+loginID.getText()+"','"+fatherName.getText()+"');");
+        		if(loginc && teacherc && commonc) {
+        			JOptionPane.showMessageDialog(null, "Teacher "+firstName.getText()+" "+lastName.getText()+" added successfully!");
         		}
         		else {
         			JOptionPane.showMessageDialog(null, "Duplicate user!");

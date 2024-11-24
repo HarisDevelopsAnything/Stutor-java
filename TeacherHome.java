@@ -12,8 +12,10 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -46,19 +48,18 @@ public class TeacherHome extends JFrame {
 	static String username = null;
 	static String userID=null;
 	static ServerConnector teacherConn= null;
+	static ServerConnector studentConn= null;
 	static ServerConnector attendConn= null;
 	static ServerConnector fileConn= null;
 	static DefaultTableModel attendanceTable;
 	static DefaultTableModel notesTable;
+	static JPanel messages;
 	static File selectedFile= null;
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		teacherConn= new ServerConnector("user_data");
-		attendConn= new ServerConnector("attendance");
-		fileConn= new ServerConnector("files");
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -75,6 +76,9 @@ public class TeacherHome extends JFrame {
 	 * Create the frame.
 	 */
 	public TeacherHome() throws IOException {
+		teacherConn= new ServerConnector("user_data");
+		attendConn= new ServerConnector("attendance");
+		fileConn= new ServerConnector("files");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 544, 317);
 		contentPane = new JPanel();
@@ -134,7 +138,9 @@ public class TeacherHome extends JFrame {
 		// Panel for Classroom Tab
 		JPanel panel_1 = new JPanel();
 		panel_1.setLayout(new BorderLayout());  // Using BorderLayout for easy component placement
-
+		messages= new JPanel(new VerticalFlowLayout(10));
+		JScrollPane jsp= new JScrollPane(messages);
+		panel_1.add(jsp, BorderLayout.CENTER);
 		// ComboBox for recipient selection (A, B, C, or DM)
 		JComboBox<String> recipientComboBox = new JComboBox<>();
 		JTextField studentIDField= new JTextField(8);
@@ -142,6 +148,7 @@ public class TeacherHome extends JFrame {
 		recipientComboBox.addItem("B");
 		recipientComboBox.addItem("C");
 		recipientComboBox.addItem("DM (Direct Message)");
+		refreshMessages();
 
 		// JTextArea for message input (long message bar)
 		JTextField messageTextArea = new JTextField(20);  // 5 rows, 40 columns for message area
@@ -153,27 +160,46 @@ public class TeacherHome extends JFrame {
 		    public void actionPerformed(ActionEvent e) {
 		        String recipient = (String) recipientComboBox.getSelectedItem();
 		        String message = messageTextArea.getText();
-		        
+		        ResultSet rs= teacherConn.executeQuery("SELECT dept from teacher where teacherid='"+userID+"';");
+		        String dept="CSE";
+		        try {
+					if(rs.next()) {
+						dept= rs.getString("dept");
+					}
+				} catch (SQLException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 		        if (message.isEmpty()) {
 		            JOptionPane.showMessageDialog(panel_1, "Please enter a message before sending.");
 		        } else {
 		            String recipientID = "";  // Store the recipient ID for DM
-		            
+		            ArrayList<String> recipients= null; //for multi recipient
 		            if ("DM (Direct Message)".equals(recipient)) {
 		                recipientID = studentIDField.getText();  // Get the student ID entered
 		                if (recipientID.isEmpty()) {
 		                    JOptionPane.showMessageDialog(panel_1, "Please enter the student ID for DM.");
 		                    return;  // Stop further processing if DM ID is missing
 		                }
+		                sendMessage(recipientID, message);
+		            }
+		            else {
+		            	ResultSet st= teacherConn.executeQuery("SELECT rollno from student WHERE class='"+recipientComboBox.getSelectedItem()+"' AND dept='"+dept+"';");
+		            	try {
+							while(st.next()) {
+								sendMessage(st.getString("rollno"), message);
+							}
+						} catch (SQLException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
 		            }
 		            
-		            // Placeholder for actual message sending functionality
-		            // You can implement logic here to send the message to the selected recipient
-		            // For example, saving the message to the database or sending it via a messaging system
-
+		            
 		            JOptionPane.showMessageDialog(panel_1, "Message sent to " + recipient + " (Student ID: " + recipientID + ")");
 		            messageTextArea.setText("");  // Clear the message area after sending
 		        }
+		        refreshMessages();
 		    }
 		});
 
@@ -206,8 +232,7 @@ public class TeacherHome extends JFrame {
 		// Add the components to the Classroom panel
 		 // Add the student ID field above the message area (only visible for DM)
 
-		// Add Classroom tab to the Tabbed Pane
-		tabbedPane.addTab("Classroom", null, panel_1, null);
+		
 
 		// Add Classroom tab to the Tabbed Pane
 		tabbedPane.addTab("Classroom", null, panel_1, null);
@@ -346,271 +371,11 @@ public class TeacherHome extends JFrame {
 		        });
 
 		        // Add the panel to the tabbed pane
-		        tabbedPane.addTab("Notes", null, panel_2, null);
+		        tabbedPane.addTab("Documents", null, panel_2, null);
 
 		     
 		
-		     // Panel for Tests Tab
-		        JPanel panel_3 = new JPanel();
-		        panel_3.setLayout(new BorderLayout());
-
-		        // Tests Section
-		        try {
-		            ResultSet tres = fileConn.executeQuery("SELECT * FROM tests WHERE teacherid=" + userID);
-
-		            ArrayList<String> tname = new ArrayList<>();
-		            ArrayList<String> tdou = new ArrayList<>();
-		            ArrayList<String> tfilePaths = new ArrayList<>();
-
-		            while (tres.next()) {
-		                tname.add(tres.getString("name"));
-		                tdou.add(tres.getString("added"));
-		                tfilePaths.add(tres.getString("filepath"));
-		            }
-
-		            int rows = tname.size();
-		            Object[][] testsData = new Object[rows][3];  // Adding a 3rd column for the buttons
-
-		            // Populate the table data
-		            for (int i = 0; i < rows; i++) {
-		                testsData[i][0] = tname.get(i); // Test name
-		                testsData[i][1] = tdou.get(i);  // Date of upload
-
-		                // Create an "Open File" button in the last column
-		                final int index = i;  // Required to make 'index' final for lambda expression
-		                JButton openButton = new JButton("Open Test");
-		                openButton.addActionListener(e -> {
-		                    try {
-		                        Desktop.getDesktop().open(new java.io.File(tfilePaths.get(index)));
-		                    } catch (IOException ex) {
-		                        ex.printStackTrace();
-		                    }
-		                });
-
-		                testsData[i][2] = openButton;  // Action column
-		            }
-
-		            // Create the table with new data (test names, dates, and buttons)
-		            String[] columnNames = {"Name", "Date of Upload", "Action"};
-		            DefaultTableModel testsTable = new DefaultTableModel(testsData, columnNames);
-
-		            // JTable setup
-		            JTable testTable = new JTable(testsTable);
-		            testTable.setDefaultEditor(Object.class, null); // Disable cell editing
-
-		            // Make sure the action buttons (Open Test) are displayed correctly
-		            testTable.getColumnModel().getColumn(2).setCellRenderer(new ButtonRenderer());
-		            testTable.getColumnModel().getColumn(2).setCellEditor(new ButtonEditor(new JCheckBox()));
-
-		            // Wrap the table in a JScrollPane and add it to the panel
-		            JScrollPane testScrollPane = new JScrollPane(testTable);
-		            panel_3.add(testScrollPane, BorderLayout.CENTER);
-
-		        } catch (SQLException e) {
-		            e.printStackTrace();
-		            System.err.println("SQLException: " + e.getMessage());
-		        }
-
-		        // Bottom panel for uploading test files
-		        JPanel bottomTest = new JPanel();
-		        JFileChooser testFileChooser = new JFileChooser();
-		        testFileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-
-		        JButton testFileButton = new JButton("Select Test");
-		        bottomTest.add(testFileButton);
-
-		        JLabel testTitleLabel = new JLabel("Enter a title:");
-		        testTitleLabel.setFont(new Font("Ubuntu", Font.PLAIN, 20));
-		        bottomTest.add(testTitleLabel);
-
-		        JTextField testTitleField = new JTextField(8);
-		        bottomTest.add(testTitleField);
-
-		        JButton uploadTestButton = new JButton("Upload Test");
-		        bottomTest.add(uploadTestButton);
-
-		        panel_3.add(bottomTest, BorderLayout.SOUTH);
-
-		        // Test file selection button action listener
-		        testFileButton.addActionListener(e -> {
-		            int result = testFileChooser.showOpenDialog(this);
-		            if (result == JFileChooser.APPROVE_OPTION) {
-		                selectedFile = testFileChooser.getSelectedFile();
-		                String fileName = selectedFile.getName();
-		                String filePath = selectedFile.getAbsolutePath();
-
-		                // Validate file extension (only PDF or DOCX for example)
-		                if (!(fileName.endsWith(".pdf") || fileName.endsWith(".docx") || fileName.endsWith(".txt"))) {
-		                    JOptionPane.showMessageDialog(this, "Only PDF, TXT, and DOCX files are allowed.");
-		                    return; // Stop further processing if invalid file type
-		                }
-
-		                JOptionPane.showMessageDialog(this, "Selected File: " + fileName);
-		                int resp = JOptionPane.showOptionDialog(this, "Do you want a preview?", "Added 1 file", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, new Object[]{"Yes", "No"}, "No");
-		                if (resp == JOptionPane.YES_OPTION) {
-		                    try {
-		                        Desktop.getDesktop().open(selectedFile);
-		                    } catch (IOException e1) {
-		                        e1.printStackTrace();
-		                    }
-		                }
-		            } else {
-		                JOptionPane.showMessageDialog(this, "No file selected.");
-		            }
-		        });
-
-		        // Upload test action listener
-		        uploadTestButton.addActionListener(e -> {
-		            String title = testTitleField.getText();
-		            if (selectedFile != null && !title.isEmpty()) {
-		                String query = "INSERT INTO tests (name, filepath, teacherid, added, comment) VALUES ('" 
-		                                + selectedFile.getName() + "', '" 
-		                                + selectedFile.getAbsolutePath().replace("\\", "/") + "', '" 
-		                                + userID + "', '" 
-		                                + LocalDate.now() + "', '" 
-		                                + title + "');";
-		                fileConn.executeUpdates(query);
-		                refreshTestsTable(); // Refresh the table after uploading the test
-		                JOptionPane.showMessageDialog(this, "Test uploaded successfully.");
-		            } else {
-		                JOptionPane.showMessageDialog(this, "Please select a test file and provide a title.");
-		            }
-		        });
-
-		        // Add the panel to the tabbed pane
-		        tabbedPane.addTab("Tests", null, panel_3, null);
-
-
-		        // Panel for Assignments Tab
-		        JPanel panel_4 = new JPanel();
-		        panel_4.setLayout(new BorderLayout());
-
-		        // Assignments Section
-		        try {
-		            ResultSet ares = fileConn.executeQuery("SELECT * FROM assignments WHERE teacherid=" + userID);
-
-		            ArrayList<String> aname = new ArrayList<>();
-		            ArrayList<String> adou = new ArrayList<>();
-		            ArrayList<String> afilePaths = new ArrayList<>();
-
-		            while (ares.next()) {
-		                aname.add(ares.getString("name"));
-		                adou.add(ares.getString("added"));
-		                afilePaths.add(ares.getString("filepath"));
-		            }
-
-		            int rows = aname.size();
-		            Object[][] assignmentsData = new Object[rows][3];  // Adding a 3rd column for the buttons
-
-		            // Populate the table data
-		            for (int i = 0; i < rows; i++) {
-		                assignmentsData[i][0] = aname.get(i); // Assignment name
-		                assignmentsData[i][1] = adou.get(i);  // Date of upload
-
-		                // Create an "Open File" button in the last column
-		                final int index = i;  // Required to make 'index' final for lambda expression
-		                JButton openButton = new JButton("Open Assignment");
-		                openButton.addActionListener(e -> {
-		                    try {
-		                        Desktop.getDesktop().open(new java.io.File(afilePaths.get(index)));
-		                    } catch (IOException ex) {
-		                        ex.printStackTrace();
-		                    }
-		                });
-
-		                assignmentsData[i][2] = openButton;  // Action column
-		            }
-
-		            // Create the table with new data (assignment names, dates, and buttons)
-		            String[] columnNames = {"Name", "Date of Upload", "Action"};
-		            DefaultTableModel assignmentsTable = new DefaultTableModel(assignmentsData, columnNames);
-
-		            // JTable setup
-		            JTable assignmentTable = new JTable(assignmentsTable);
-		            assignmentTable.setDefaultEditor(Object.class, null); // Disable cell editing
-
-		            // Make sure the action buttons (Open Assignment) are displayed correctly
-		            assignmentTable.getColumnModel().getColumn(2).setCellRenderer(new ButtonRenderer());
-		            assignmentTable.getColumnModel().getColumn(2).setCellEditor(new ButtonEditor(new JCheckBox()));
-
-		            // Wrap the table in a JScrollPane and add it to the panel
-		            JScrollPane assignmentScrollPane = new JScrollPane(assignmentTable);
-		            panel_4.add(assignmentScrollPane, BorderLayout.CENTER);
-
-		        } catch (SQLException e) {
-		            e.printStackTrace();
-		            System.err.println("SQLException: " + e.getMessage());
-		        }
-
-		        // Bottom panel for uploading assignment files
-		        JPanel bottomAssignment = new JPanel();
-		        JFileChooser assignmentFileChooser = new JFileChooser();
-		        assignmentFileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
-
-		        JButton assignmentFileButton = new JButton("Select Assignment");
-		        bottomAssignment.add(assignmentFileButton);
-
-		        JLabel assignmentTitleLabel = new JLabel("Enter a title:");
-		        assignmentTitleLabel.setFont(new Font("Ubuntu", Font.PLAIN, 20));
-		        bottomAssignment.add(assignmentTitleLabel);
-
-		        JTextField assignmentTitleField = new JTextField(8);
-		        bottomAssignment.add(assignmentTitleField);
-
-		        JButton uploadAssignmentButton = new JButton("Upload Assignment");
-		        bottomAssignment.add(uploadAssignmentButton);
-
-		        panel_4.add(bottomAssignment, BorderLayout.SOUTH);
-
-		        // Assignment file selection button action listener
-		        assignmentFileButton.addActionListener(e -> {
-		            int result = assignmentFileChooser.showOpenDialog(this);
-		            if (result == JFileChooser.APPROVE_OPTION) {
-		                selectedFile = assignmentFileChooser.getSelectedFile();
-		                String fileName = selectedFile.getName();
-		                String filePath = selectedFile.getAbsolutePath();
-
-		                // Validate file extension (only PDF or DOCX for example)
-		                if (!(fileName.endsWith(".pdf") || fileName.endsWith(".docx") || fileName.endsWith(".txt"))) {
-		                    JOptionPane.showMessageDialog(this, "Only PDF, TXT, and DOCX files are allowed.");
-		                    return; // Stop further processing if invalid file type
-		                }
-
-		                JOptionPane.showMessageDialog(this, "Selected File: " + fileName);
-		                int resp = JOptionPane.showOptionDialog(this, "Do you want a preview?", "Added 1 file", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, new Object[]{"Yes", "No"}, "No");
-		                if (resp == JOptionPane.YES_OPTION) {
-		                    try {
-		                        Desktop.getDesktop().open(selectedFile);
-		                    } catch (IOException e1) {
-		                        e1.printStackTrace();
-		                    }
-		                }
-		            } else {
-		                JOptionPane.showMessageDialog(this, "No file selected.");
-		            }
-		        });
-
-		        // Upload assignment action listener
-		        uploadAssignmentButton.addActionListener(e -> {
-		            String title = assignmentTitleField.getText();
-		            if (selectedFile != null && !title.isEmpty()) {
-		                String query = "INSERT INTO assignments (name, filepath, teacherid, added, comment) VALUES ('" 
-		                                + selectedFile.getName() + "', '" 
-		                                + selectedFile.getAbsolutePath().replace("\\", "/") + "', '" 
-		                                + userID + "', '" 
-		                                + LocalDate.now() + "', '" 
-		                                + title + "');";
-		                fileConn.executeUpdates(query);
-		                refreshAssignmentsTable(); // Refresh the table after uploading the assignment
-		                JOptionPane.showMessageDialog(this, "Assignment uploaded successfully.");
-		            } else {
-		                JOptionPane.showMessageDialog(this, "Please select an assignment file and provide a title.");
-		            }
-		        });
-
-		        // Add the panel to the tabbed pane
-		        tabbedPane.addTab("Assignments", null, panel_4, null);
-
+		     
 		
 		JComboBox<Integer> semChoose= new JComboBox<>();
 		for(int i=1;i<=8;i++)
@@ -662,9 +427,11 @@ public class TeacherHome extends JFrame {
 			JOptionPane.showMessageDialog(null, e.getMessage());
 		}
 		JTable jt = new JTable(attendanceTable);
-		JScrollPane jsp= new JScrollPane(jt);
-		centre5.add(jsp);
+		JScrollPane jsp1= new JScrollPane(jt);
+		centre5.add(jsp1);
 		tabbedPane.addTab("Attendance", null, panel_5, null);
+		
+		
 		
 		JLabel lblWelcomeBackUser = new JLabel("Dr. "+username + " | Teacher");
 		contentPane.add(lblWelcomeBackUser, BorderLayout.NORTH);
@@ -693,7 +460,42 @@ public class TeacherHome extends JFrame {
 			JOptionPane.showMessageDialog(null, e.getMessage());
 		}
 	}
-	
+	public void refreshMessages() {
+    	ResultSet rs = fileConn.executeQuery("SELECT * from messages where rec='"+userID+"' OR sender='"+userID+"';");
+    	try {
+	    	while(rs.next()) {
+	    		messages.add(new MessageBubble(rs.getString("sender"),rs.getString("rec"),rs.getString("message"),rs.getString("dom"),userID));
+	    	}
+    	}
+    	catch(Exception e) {
+    		System.out.println(e.getMessage());
+    	}
+    }
+    public void sendMessage(String userID, String message) {
+    	System.out.println(userID+" "+message);
+    	if(userID.length()==5 && message.length()!=0) {
+    		String rec="";
+    		try {
+    			ResultSet test= teacherConn.executeQuery("SELECT * from common WHERE uid="+userID);
+    			if(test.next()) {
+    				rec= test.getString("name");
+    			}
+    			else {
+    				JOptionPane.showMessageDialog(null, "No such user!");
+    				return;
+    			}
+    			Date currDate= new Date();
+    			SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+    			String date= sdf.format(currDate);
+    			fileConn.executeUpdates("INSERT into messages () values('"+TeacherHome.userID+"','"+userID+"','"+message+"','"+date+"');");
+    			JOptionPane.showMessageDialog(null, "Sent message to "+rec);
+    		}
+    		catch(Exception e) {
+    			
+    		}
+    		
+    	}
+    }
 	static void refreshFileTable() {
 	try {
 		ResultSet nres=fileConn.executeQuery("select * from notes where teacherid="+userID);

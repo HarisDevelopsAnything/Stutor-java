@@ -38,7 +38,7 @@ public class UpdateStudent extends JFrame {
         private JTextField fatherName;
         private JTextField email;
         private JTextField loginID;
-        private JPasswordField passwordField;
+        private JTextField passwordField;
         static JComboBox<String> branch;
         static  JComboBox<String> gender;
         static JSpinner age;
@@ -51,8 +51,7 @@ public class UpdateStudent extends JFrame {
          * Launch the application.
          */
         public static void main(String[] args) {
-        		userdataConn= new ServerConnector("user_data");
-        		userConn= new ServerConnector();  //default to normal login db
+        		  //default to normal login db
                 EventQueue.invokeLater(new Runnable() {
                         public void run() {
                                 try {
@@ -69,6 +68,8 @@ public class UpdateStudent extends JFrame {
          * Create the frame.
          */
         public UpdateStudent() {
+        	userdataConn= new ServerConnector("user_data");
+    		userConn= new ServerConnector("users");
                 setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 setBounds(100, 100, 600, 450);
                 contentPane = new JPanel();
@@ -211,18 +212,27 @@ public class UpdateStudent extends JFrame {
                 JLabel lblNewLabel_12 = new JLabel("Password:");
                 panel_7.add(lblNewLabel_12);
 
-                passwordField = new JPasswordField();
+                passwordField = new JTextField();
                 passwordField.setColumns(10);
                 panel_7.add(passwordField);
-
-                JButton btnNewButton = new JButton("Update details");
+                
+                JPanel panel_8= new JPanel(new GridLayout(1,2));
+                JButton btnNewButton = new JButton("Fetch details");
                 btnNewButton.addActionListener(new ActionListener() {
                 	public void actionPerformed(ActionEvent e) {
                 		getCurrentDetails();
+                	}
+                });
+                panel_8.add(btnNewButton);
+                JButton btnNewButton1 = new JButton("Update details");
+                btnNewButton1.addActionListener(new ActionListener() {
+                	public void actionPerformed(ActionEvent e) {
+                		setCurrentDetails();
                 		enableAllComponents();
                 	}
                 });
-                panel_1.add(btnNewButton);
+                panel_8.add(btnNewButton1);
+                panel_1.add(panel_8);
                 disableAllComponents();
 
         }
@@ -274,12 +284,18 @@ public class UpdateStudent extends JFrame {
             addr.setEnabled(true);
         }
         public void getCurrentDetails() {
+        	if(loginID.getText().length()==5)
+        	{
         	try {
         		ResultSet rs1= userConn.executeQuery("SELECT * from students WHERE id="+loginID.getText());
         		ResultSet rs2= userdataConn.executeQuery("SELECT * from student WHERE rollno="+loginID.getText());
         		ResultSet rs3= userdataConn.executeQuery("SELECT * from common WHERE uid="+loginID.getText());
         		if(rs1.next()) {
         			passwordField.setText(rs1.getString("password"));
+        		}
+        		else {
+        			JOptionPane.showMessageDialog(null, "Student does not exist!\n If the ID was of a teacher, use Update Teacher feature to update their details!");
+        			return;
         		}
         		if(rs2.next()) {
         			rollNo.setText(rs2.getString("rollno"));
@@ -298,7 +314,7 @@ public class UpdateStudent extends JFrame {
         				name[0]= rs3.getString("name").substring(0,splitPoint);
         				name[1]= rs3.getString("name").substring(splitPoint+1);
         			}
-
+        			fatherName.setText(rs3.getString("father"));
         			firstName.setText(name[0]);
         			lastName.setText(name[1]);
         			addr.setText(rs3.getString("addr"));
@@ -310,12 +326,20 @@ public class UpdateStudent extends JFrame {
         				gender.setSelectedItem("Male");
         			else
         				gender.setSelectedItem("Female");
+        			enableAllComponents();
         		}
         	}
         	catch(Exception e) {
         		JOptionPane.showMessageDialog(null, "Error fetching user details!");
         		e.printStackTrace();
+        		disableAllComponents();
         	}
+        	}
+        	else
+        		JOptionPane.showMessageDialog(null, "Invalid login ID!");
+        }
+        public void setCurrentDetails() {
+        	inputValidator();
         }
         public boolean passwordCheck(String pwd) {
         	// Check if the password length is greater than 8
@@ -344,11 +368,11 @@ public class UpdateStudent extends JFrame {
         	if(loginID.getText().length()==5) {
         		if(firstName.getText().length()!=0) {
         			if((int)age.getValue()>16 && (int)age.getValue()<100) {
-        				if(rollNo.getText().length()==8) {
+        				if(rollNo.getText().length()==5) {
         					if(mobNo.getText().length()==10) {
         						if((email.getText().endsWith("@gmail.com") || email.getText().endsWith("@outlook.com") || email.getText().endsWith("@mepcoeng.ac.in")) && !email.getText().contains(" ")) {
         								if(passwordCheck(passwordField.getText())) {
-        									addUser();
+        									updateUser();
         								}
         								else
         									JOptionPane.showMessageDialog(null, "Password must:\n1) be of length more than 8 characters\n2) contain spl chars\n3) contain digits");
@@ -360,7 +384,7 @@ public class UpdateStudent extends JFrame {
         						JOptionPane.showMessageDialog(null, "Invalid mobile number!");
         				}
         				else
-        					JOptionPane.showMessageDialog(null, "Roll no. must be 8 characters!");
+        					JOptionPane.showMessageDialog(null, "Roll no. must be 5 characters!");
         			}
         			else
         				JOptionPane.showMessageDialog(null, "Age is invalid!");
@@ -371,22 +395,28 @@ public class UpdateStudent extends JFrame {
         	else
         		JOptionPane.showMessageDialog(null, "Login ID must be 5 characters!");
         }
-        public void addUser() {
-        	
-        	try {
-        		String des="student";
-        		boolean loginc= userConn.executeUpdates("insert into students () values ('"+loginID.getText()+"','"+firstName.getText()+"','"+passwordField.getText()+"');");
-        		boolean studentc= userdataConn.executeUpdates("insert into student (rollno,class,crank,cgpa,dept) values ('"+loginID.getText()+"','"+sec.getSelectedItem()+"', 0, 0.0, '"+branch.getSelectedItem()+"');");
-        		boolean commonc= userdataConn.executeUpdates("insert into common (name,age,addr,phno,email,gender,type,uid) values ('"+firstName.getText()+" "+lastName.getText()+"',"+age.getValue()+",'"+addr.getText()+"','"+mobNo.getText()+"','"+email.getText()+"','"+((String) gender.getSelectedItem()).charAt(0)+"','"+des.toUpperCase().charAt(0)+"','"+loginID.getText()+"');");
-        		if(loginc && studentc && commonc) {
-        			JOptionPane.showMessageDialog(null, "Student "+firstName.getText()+" "+lastName.getText()+" added successfully!");
-        		}
-        		else {
-        			JOptionPane.showMessageDialog(null, "Duplicate user!");
-        		}
-        	}
-        	catch(Exception e) {
-        		System.out.println(e.getMessage());
-        	}
+        public void updateUser() {
+            try {
+                String des = "student";
+                
+                // Update the students table with the new values
+                boolean loginc = userConn.executeUpdates("UPDATE students SET username = '"+firstName.getText()+"', password = '"+passwordField.getText()+"' WHERE id = '"+loginID.getText()+"';");
+                
+                // Update the student table with the new values
+                boolean studentc = userdataConn.executeUpdates("UPDATE student SET class = '"+sec.getSelectedItem()+"', crank = 0, cgpa = 0.0, dept = '"+branch.getSelectedItem()+"' WHERE rollno = '"+loginID.getText()+"';");
+                
+                // Update the common table with the new values
+                boolean commonc = userdataConn.executeUpdates("UPDATE common SET name = '"+firstName.getText()+" "+lastName.getText()+"', age = "+age.getValue()+", addr = '"+addr.getText()+"', phno = '"+mobNo.getText()+"', email = '"+email.getText()+"', gender = '"+((String) gender.getSelectedItem()).charAt(0)+"', type = '"+des.toUpperCase().charAt(0)+"', father='"+fatherName.getText()+"' WHERE uid = '"+loginID.getText()+"';");
+
+                // If all updates were successful
+                if(loginc && studentc && commonc) {
+                    JOptionPane.showMessageDialog(null, "Student "+firstName.getText()+" "+lastName.getText()+" updated successfully!");
+                } else {
+                    JOptionPane.showMessageDialog(null, "Failed to update user! Please check if the user exists.");
+                }
+            } catch(Exception e) {
+                System.out.println(e.getMessage());
+            }
         }
+
 }

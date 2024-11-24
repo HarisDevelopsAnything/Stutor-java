@@ -7,6 +7,8 @@ import java.awt.BorderLayout;
 import java.awt.SystemColor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.ResultSet;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.awt.Color;
@@ -33,7 +35,6 @@ public class UpdateTeacher extends JFrame {
         static  JComboBox<String> gender;
         static JSpinner age;
         static JSpinner exp;
-        static JComboBox<String> sec;
         static JComboBox<Integer> semSelect;
         static JRadioButton studentSel;
         static JTextArea addr;
@@ -44,8 +45,6 @@ public class UpdateTeacher extends JFrame {
          * Launch the application.
          */
         public static void main(String[] args) {
-        		userdataConn= new ServerConnector("user_data");
-        		userConn= new ServerConnector();  //default to normal login db
                 EventQueue.invokeLater(new Runnable() {
                         public void run() {
                                 try {
@@ -62,8 +61,10 @@ public class UpdateTeacher extends JFrame {
          * Create the frame.
          */
         public UpdateTeacher() {
+        	userdataConn= new ServerConnector("user_data");
+    		userConn= new ServerConnector();  //default to normal login db
                 setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                setTitle("Create new teacher");
+                setTitle("Update teacher");
                 setBounds(100, 100, 600, 450);
                 contentPane = new JPanel();
                 contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -75,7 +76,7 @@ public class UpdateTeacher extends JFrame {
                 panel.setBackground(SystemColor.desktop);
                 contentPane.add(panel, BorderLayout.NORTH);
 
-                JLabel lblCreateNewStutor = new JLabel("Create new Stutor user");
+                JLabel lblCreateNewStutor = new JLabel("Update existing Stutor user");
                 lblCreateNewStutor.setFont(new Font("Product Sans", Font.PLAIN, 10));
                 lblCreateNewStutor.setForeground(new Color(255, 255, 255));
                 panel.add(lblCreateNewStutor);
@@ -221,7 +222,7 @@ public class UpdateTeacher extends JFrame {
                 panel_6.add(studentSel);
                 */
 
-                JLabel lblNewLabel_10_1 = new JLabel("Credentials (for login):");
+                JLabel lblNewLabel_10_1 = new JLabel("Enter the ID to update:");
                 panel_1.add(lblNewLabel_10_1);
                 lblNewLabel_10_1.setFont(new Font("Tahoma", Font.PLAIN, 15));
 
@@ -241,16 +242,133 @@ public class UpdateTeacher extends JFrame {
                 passwordField = new JPasswordField();
                 passwordField.setColumns(10);
                 panel_7.add(passwordField);
-
-                JButton btnNewButton = new JButton("Register");
+                
+                JPanel panel_8= new JPanel(new GridLayout(1,2));
+                JButton btnNewButton = new JButton("Fetch details");
                 btnNewButton.addActionListener(new ActionListener() {
                 	public void actionPerformed(ActionEvent e) {
-                		inputValidator();
+                		getCurrentDetails();
                 	}
                 });
-                panel_1.add(btnNewButton);
+                panel_8.add(btnNewButton);
+                JButton btnNewButton1 = new JButton("Update details");
+                btnNewButton1.addActionListener(new ActionListener() {
+                	public void actionPerformed(ActionEvent e) {
+                		setCurrentDetails();
+                		enableAllComponents();
+                	}
+                });
+                panel_8.add(btnNewButton1);
+                panel_1.add(panel_8);
+                disableAllComponents();
 
         }
+        public void disableAllComponents() {
+            // Disable JTextFields
+            firstName.setEnabled(false);
+            lastName.setEnabled(false);
+            teacherID.setEnabled(false);
+            mobNo.setEnabled(false);
+            fatherName.setEnabled(false);
+            email.setEnabled(false);
+            sal.setEnabled(false);
+            // Disable JPasswordField
+            passwordField.setEnabled(false);
+            exp.setEnabled(false);
+            // Disable JComboBoxes
+            branch.setEnabled(false);
+            gender.setEnabled(false);
+
+            // Disable JSpinner
+            age.setEnabled(false);
+
+            // Disable JTextArea
+            addr.setEnabled(false);
+        }
+        public void enableAllComponents() {
+            // Enable JTextFields
+            firstName.setEnabled(true);
+            lastName.setEnabled(true);
+            teacherID.setEnabled(true);
+            mobNo.setEnabled(true);
+            fatherName.setEnabled(true);
+            email.setEnabled(true);
+            loginID.setEnabled(true);
+            sal.setEnabled(true);
+            exp.setEnabled(true);
+            // Enable JPasswordField
+            passwordField.setEnabled(true);
+
+            // Enable JComboBoxes
+            branch.setEnabled(true);
+            gender.setEnabled(true);
+
+            // Enable JSpinner
+            age.setEnabled(true);
+
+            // Enable JTextArea
+            addr.setEnabled(true);
+        }
+        public void getCurrentDetails() {
+        	if(loginID.getText().length()==5)
+        	{
+        	try {
+        		ResultSet rs1= userConn.executeQuery("SELECT * from teachers WHERE id="+loginID.getText());
+        		ResultSet rs2= userdataConn.executeQuery("SELECT * from teacher WHERE teacherid="+loginID.getText());
+        		ResultSet rs3= userdataConn.executeQuery("SELECT * from common WHERE uid="+loginID.getText());
+        		if(rs1.next()) {
+        			passwordField.setText(rs1.getString("password"));
+        		}
+        		else {
+        			JOptionPane.showMessageDialog(null, "Student does not exist!\n If the ID was of a teacher, use Update Teacher feature to update their details!");
+        			return;
+        		}
+        		if(rs2.next()) {
+        			teacherID.setText(rs2.getString("teacherid"));
+        			branch.setSelectedItem(rs2.getString("dept"));
+        			sal.setText(rs2.getString("sal"));
+        			exp.setValue((Integer.parseInt(rs2.getString("exp"))));
+        		}
+        		if(rs3.next()) {
+        			String name[]= new String[2];
+        			Arrays.fill(name, "");
+        			int splitPoint = rs3.getString("name").indexOf(" ");
+        			if(splitPoint==-1) {
+        				name[0]= rs3.getString("name");
+        				name[1]= "";
+        			}
+        			else {
+        				name[0]= rs3.getString("name").substring(0,splitPoint);
+        				name[1]= rs3.getString("name").substring(splitPoint+1);
+        			}
+        			fatherName.setText(rs3.getString("father"));
+        			firstName.setText(name[0]);
+        			lastName.setText(name[1]);
+        			addr.setText(rs3.getString("addr"));
+        			age.setValue(Integer.parseInt(rs3.getString("age")));
+        			
+        			mobNo.setText(rs3.getString("phno"));
+        			email.setText(rs3.getString("email"));
+        			if(rs3.getString("gender").equals("M"))
+        				gender.setSelectedItem("Male");
+        			else
+        				gender.setSelectedItem("Female");
+        			enableAllComponents();
+        		}
+        	}
+        	catch(Exception e) {
+        		JOptionPane.showMessageDialog(null, "Error fetching user details!");
+        		e.printStackTrace();
+        		disableAllComponents();
+        	}
+        	}
+        	else
+        		JOptionPane.showMessageDialog(null, "Invalid login ID!");
+        }
+        public void setCurrentDetails() {
+        	inputValidator();
+        }
+
         public boolean passwordCheck(String pwd) {
         	// Check if the password length is greater than 8
             if (pwd.length() <= 8) {
@@ -278,12 +396,12 @@ public class UpdateTeacher extends JFrame {
         	if(loginID.getText().length()==5) {
         		if(firstName.getText().length()!=0) {
         			if((int)age.getValue()>25 && (int)age.getValue()<100) {
-        				if(teacherID.getText().length()==8) {
+        				if(teacherID.getText().length()==5) {
         					if(mobNo.getText().length()==10) {
         						if((email.getText().endsWith("@gmail.com") || email.getText().endsWith("@outlook.com") || email.getText().endsWith("@mepcoeng.ac.in")) && !email.getText().contains(" ")) {
         								if(passwordCheck(passwordField.getText())) {
         									if((int)exp.getValue()>=0) {
-        										
+        										updateUser();
         									}
         									else
         										JOptionPane.showMessageDialog(null, "Experience can't be negative!");
@@ -298,7 +416,7 @@ public class UpdateTeacher extends JFrame {
         						JOptionPane.showMessageDialog(null, "Invalid mobile number!");
         				}
         				else
-        					JOptionPane.showMessageDialog(null, "Roll no. must be 8 characters!");
+        					JOptionPane.showMessageDialog(null, "Roll no. must be 5 characters!");
         			}
         			else
         				JOptionPane.showMessageDialog(null, "Age is invalid!");
@@ -309,22 +427,30 @@ public class UpdateTeacher extends JFrame {
         	else
         		JOptionPane.showMessageDialog(null, "Login ID must be 5 characters!");
         }
-        public void addUser() {
-        	
-        	try {
-        		String des="student";
-        		boolean loginc= userConn.executeUpdates("insert into students () values ('"+loginID.getText()+"','"+firstName.getText()+"','"+passwordField.getText()+"');");
-        		boolean studentc= userdataConn.executeUpdates("insert into teacher (teacherid,exp,sal,dept,classes) values ('"+loginID.getText()+"','"+sec.getSelectedItem()+"', 0, 0.0, '"+branch.getSelectedItem()+"');");
-        		boolean commonc= userdataConn.executeUpdates("insert into common (name,age,addr,phno,email,gender,type,uid) values ('"+firstName.getText()+" "+lastName.getText()+"',"+age.getValue()+",'"+addr.getText()+"','"+mobNo.getText()+"','"+email.getText()+"','"+((String) gender.getSelectedItem()).charAt(0)+"','"+des.toUpperCase().charAt(0)+"','"+loginID.getText()+"');");
-        		if(loginc && studentc && commonc) {
-        			JOptionPane.showMessageDialog(null, "Student "+firstName.getText()+" "+lastName.getText()+" added successfully!");
-        		}
-        		else {
-        			JOptionPane.showMessageDialog(null, "Duplicate user!");
-        		}
-        	}
-        	catch(Exception e) {
-        		System.out.println(e.getMessage());
-        	}
+        public void updateUser() {
+            try {
+                String des = "teacher";  // Assuming designation is constant like in the addUser method
+
+                // Update teachers table (login and password might be updated)
+                boolean loginc = userConn.executeUpdates("UPDATE teachers SET username = '" + firstName.getText() + "', password = '" + passwordField.getText() + "' WHERE id = '" + loginID.getText() + "';");
+                
+                // Update teacher details (e.g., experience, salary, department, classes)
+                boolean teacherc = userdataConn.executeUpdates("UPDATE teacher SET exp = " + exp.getValue() + ", sal = " + sal.getText() + ", dept = '" + branch.getSelectedItem() + "', classes = 'A,B,C' WHERE teacherid = '" + loginID.getText() + "';");
+                
+                // Update common details (e.g., personal information like name, age, address, etc.)
+                boolean commonc = userdataConn.executeUpdates("UPDATE common SET name = '" + firstName.getText() + " " + lastName.getText() + "', age = " + age.getValue() + ", addr = '" + addr.getText() + "', phno = '" + mobNo.getText() + "', email = '" + email.getText() + "', gender = '" + ((String) gender.getSelectedItem()).charAt(0) + "', type = '" + des.toUpperCase().charAt(0) + "', father = '" + fatherName.getText() + "' WHERE uid = '" + loginID.getText() + "';");
+
+                // If all updates are successful, show a success message
+                if (loginc && teacherc && commonc) {
+                    JOptionPane.showMessageDialog(null, "Teacher " + firstName.getText() + " " + lastName.getText() + " updated successfully!");
+                } else {
+                    JOptionPane.showMessageDialog(null, "Error in updating user details!");
+                }
+
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                JOptionPane.showMessageDialog(null, "An error occurred while updating user details.");
+            }
         }
 }
+
