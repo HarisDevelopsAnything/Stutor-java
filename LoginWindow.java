@@ -20,6 +20,7 @@ public class LoginWindow extends JFrame {
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
+				
 				try {
 					LoginWindow frame = new LoginWindow();
 					frame.setVisible(true);
@@ -36,11 +37,11 @@ public class LoginWindow extends JFrame {
 	public LoginWindow() {
 		setTitle("Stutor | Login");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 509, 333);
+		setBounds(100, 100, 600, 333);
 		contentPane = new JPanel();
 		setContentPane(contentPane);
 		contentPane.setLayout(new BorderLayout(0, 0));
-		ImageIcon img = new ImageIcon("/stutor/icons/stutor-color.png");
+		ImageIcon img = new ImageIcon("icons/stutor-color.png");
 		setIconImage(img.getImage());
 		JPanel panel = new JPanel();
 		panel.setBackground(UIManager.getColor("Button.focus"));
@@ -48,6 +49,12 @@ public class LoginWindow extends JFrame {
 		JLabel lblWelcomeBack = new JLabel("Welcome back!");
 		panel.add(lblWelcomeBack);
 		JPanel centerPanel= new JPanel(new GridLayout(7,1));
+		ImageIcon resimg= GUIMisc.imageResize(img, 20, 20);
+		JPanel iconPanel= new JPanel();
+		JLabel icon= new JLabel(resimg);
+		iconPanel.add(icon);
+		iconPanel.add(new JLabel("Stutor"));
+		centerPanel.add(iconPanel);
 		JLabel lblEnterYourCredentials = new JLabel("Enter your credentials");
 		JPanel headingPanel= new JPanel();
 		headingPanel.add(lblEnterYourCredentials);
@@ -93,7 +100,12 @@ public class LoginWindow extends JFrame {
 		panel_2.add(lblKeepYourPassword);
 		panel_2.add(btnForgotPasswd);
 	}
-	void login() {
+	void login() {	
+		if(unameField.getText().equals("admin") && passwordField.getText().equals("admin#sudo")) {
+			setVisible(false);
+			AdminHome.main(null);
+			return;
+		}
 		JOptionPane.showMessageDialog(null,"Hello, "+ unameField.getText()+". Logging in...");
 		ServerConnector loginConn = new ServerConnector(); //defaults to user login db
 		loginConn.connect();

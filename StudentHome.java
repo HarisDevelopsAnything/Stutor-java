@@ -3,6 +3,8 @@ package stutor;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
@@ -23,13 +25,19 @@ public class StudentHome extends JFrame {
 	private JPanel contentPane;
 	static String username = null;
 	static String userID= null;
-	static String dept= null;
+	static String dept= "CSE";
 	static JComboBox<Integer> semChoose;
+	static JComboBox<Integer> semChoose1;
 	static ServerConnector studentConn= null;
 	static ServerConnector attendConn= null;
 	static ServerConnector scoreConn = null;
 	static ServerConnector fileConn= null;
 	static DefaultTableModel notesTable;
+	static DefaultTableModel cat1Table;
+	static DefaultTableModel cat2Table;
+	static DefaultTableModel cat3Table;
+	static DefaultTableModel semTable;
+	static JScrollPane messageScroll;
 	static JPanel fileList;
 	static JPanel messages;
 	static ServerConnector subjectConn= null;
@@ -116,8 +124,8 @@ public class StudentHome extends JFrame {
 		JPanel panel_12 = new JPanel();
 		panel_12.setLayout(new BorderLayout());  // Using BorderLayout for easy component placement
 		messages= new JPanel(new VerticalFlowLayout(10));
-		JScrollPane jsp= new JScrollPane(messages);
-		panel_12.add(jsp, BorderLayout.CENTER);
+		messageScroll= new JScrollPane(messages);
+		panel_12.add(messageScroll, BorderLayout.CENTER);
 		// ComboBox for recipient selection (A, B, C, or DM)
 		JComboBox<String> recipientComboBox = new JComboBox<>();
 		JTextField studentIDField= new JTextField(8);
@@ -135,7 +143,7 @@ public class StudentHome extends JFrame {
 		        String recipient = (String) recipientComboBox.getSelectedItem();
 		        String message = messageTextArea.getText();
 		        ResultSet rs= studentConn.executeQuery("SELECT dept from student where rollno='"+userID+"';");
-		        String dept="CSE";
+		        dept="CSE";
 		        try {
 					if(rs.next()) {
 						dept= rs.getString("dept");
@@ -158,7 +166,7 @@ public class StudentHome extends JFrame {
 		                refreshMessages();
 		            }
 		            
-		            JOptionPane.showMessageDialog(panel_12, "Message sent to " + recipient + " (Student ID: " + recipientID + ")");
+		            JOptionPane.showMessageDialog(panel_12, "Message sent to " + recipient + " (Teacher ID: " + recipientID + ")");
 		            messageTextArea.setText("");  // Clear the message area after sending
 		        }
 		    }
@@ -190,11 +198,7 @@ public class StudentHome extends JFrame {
 		    }
 		});
 		panel_12.add(southPanel, BorderLayout.SOUTH);
-		// Add the components to the Classroom panel
-		 // Add the student ID field above the message area (only visible for DM)
-
-		
-
+		refreshMessages();
 		// Add Classroom tab to the Tabbed Pane
 		tabbedPane.addTab("Classroom", null, panel_12, null);
 		
@@ -211,41 +215,55 @@ public class StudentHome extends JFrame {
 		JTabbedPane scorePanel = new JTabbedPane();
 		JPanel cat1 = new JPanel();
 		cat1.setLayout(new BorderLayout());
-		DefaultTableModel cat1Table= new DefaultTableModel(null, ecols);
+		cat1Table= new DefaultTableModel(null, ecols);
 		JTable jt1= new JTable(cat1Table);
 		cat1Table.addRow(ecols);
 		cat1.add(jt1);
 		JPanel cat2= new JPanel();
 		cat2.setLayout(new BorderLayout());
-		DefaultTableModel cat2Table= new DefaultTableModel(null,ecols);
+		cat2Table= new DefaultTableModel(null,ecols);
 		JTable jt2= new JTable(cat2Table);
 		cat2Table.addRow(ecols);
 		cat2.add(jt2, BorderLayout.CENTER);
 		JPanel cat3= new JPanel();
 		cat3.setLayout(new BorderLayout());
-		DefaultTableModel cat3Table= new DefaultTableModel(null,ecols);
+		cat3Table= new DefaultTableModel(null,ecols);
 		JTable jt3= new JTable(cat3Table);
 		cat3Table.addRow(ecols);
 		cat3.add(jt3);
-		
+		JPanel sem= new JPanel();
+		sem.setLayout(new BorderLayout());	
+		String scols[]= {"Course code","Course name","Score","Credits","Result"};
+		semTable= new DefaultTableModel(null,ecols);
+		JTable jt4= new JTable(semTable);
+		semTable.addRow(scols);
+		sem.add(jt4);
 		scorePanel.addTab("CAT 1", null, cat1, null);
 		scorePanel.addTab("CAT 2", null, cat2, null);
 		scorePanel.addTab("CAT 3", null, cat3, null);
+		scorePanel.addTab("End sem", null, sem, null);
+		
 		chooser.add(new JLabel("Select semester: "));
 		chooser.add(semChoose);
 		center.add(chooser, BorderLayout.NORTH);
 		center.add(scorePanel, BorderLayout.CENTER);
 		panel_1.add(center, BorderLayout.CENTER);
 		tabbedPane.addTab("Scores", null, panel_1, null);
-		
+		refreshScores(1);
+		semChoose.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+				refreshScores((int)semChoose.getSelectedItem());
+			}
+		});
 		// Panel for Notes Tab
         JPanel panel_2 = new JPanel();
         panel_2.setLayout(new BorderLayout());
-        panel_2.add(fileList,BorderLayout.CENTER);
+        JScrollPane jsp1= new JScrollPane(fileList);
+        panel_2.add(jsp1,BorderLayout.CENTER);
         // Notes Section
         try {
         	ArrayList<String> teacherID = new ArrayList<>();
-        	String dept="";
+        	dept="CSE";
         	ResultSet rs= studentConn.executeQuery("SELECT * from student where rollno='"+userID+"';");
         	if(rs.next())
         	dept= rs.getString("dept");
@@ -370,8 +388,11 @@ public class StudentHome extends JFrame {
 		JPanel centre5= new JPanel(new GridLayout());
 		JPanel semChooser= new JPanel();
 		semChooser.add(new JLabel("Select semester"));
-		semChooser.add(semChoose);
-		semChoose.addItemListener(new ItemListener() {
+		semChoose1= new JComboBox<>();
+		for(int i=1;i<=8;i++)
+		semChoose1.addItem(i);
+		semChooser.add(semChoose1);
+		semChoose1.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				refreshAttendance((int)semChoose.getSelectedItem());
 			}
@@ -394,21 +415,12 @@ public class StudentHome extends JFrame {
 		}
 		JTable jt = new JTable(attendanceTable);
 		jt.setDefaultEditor(Object.class, null);
-		JScrollPane jsp1= new JScrollPane(jt);
-		centre5.add(jsp1);
+		JScrollPane jsp2= new JScrollPane(jt);
+		centre5.add(jsp2);
 		tabbedPane.addTab("Attendance", null, panel_5, null);
 		
 		JLabel lblWelcomeBackUser = new JLabel(username+ " | Student");
 		contentPane.add(lblWelcomeBackUser, BorderLayout.NORTH);
-	}
-	private void refreshAssignmentsTable() {
-		// TODO Auto-generated method stub
-		
-	}
-
-	private void refreshTestsTable() {
-		// TODO Auto-generated method stub
-		
 	}
 	public void refreshMessages() {
 		messages.removeAll();
@@ -421,6 +433,8 @@ public class StudentHome extends JFrame {
     	catch(Exception e) {
     		System.out.println(e.getMessage());
     	}
+    	messages.revalidate();
+    	GUIMisc.scrollToBottom(messageScroll);
     }
     public void sendMessage(String userID, String message) {
     	System.out.println(userID+" "+message);
@@ -476,7 +490,7 @@ public class StudentHome extends JFrame {
 				ndou.add(nres.getString("added"));
 			}
 			int rows = nname.size();
-			notesTable.setRowCount(0);
+			notesTable.setRowCount(0); //refresh table
 			for (int i = 0; i < rows; i++) {
 				String [] t= {nname.get(i), ndou.get(i)};
 				notesTable.addRow(t);  // First column - Name
@@ -489,20 +503,66 @@ public class StudentHome extends JFrame {
 		}
 		}
 	void refreshScores(int sem) {
-		/* yet to implement
+		cat1Table.setRowCount(0);
+		cat2Table.setRowCount(0);
+		cat3Table.setRowCount(0);
+		semTable.setRowCount(0);
+		String q1= "SELECT * from cat where cat=1 AND sem="+semChoose.getSelectedItem()+" AND rollno='"+userID+"';";
+		String q2= "SELECT * from cat where cat=2 AND sem="+semChoose.getSelectedItem()+" AND rollno='"+userID+"';";
+		String q3= "SELECT * from cat where cat=3 AND sem="+semChoose.getSelectedItem()+" AND rollno='"+userID+"';";
+		String s= "SELECT * from sem where sem="+semChoose.getSelectedItem()+" AND rollno='"+userID+"';";
+		String subsql= "SELECT * from "+dept.toLowerCase()+";";
+		String subj[]= new String[6];
+		String cc[]= new String[6];
+		int cred[]= new int[6];
+		int i=0;
+		ResultSet subs= subjectConn.executeQuery(subsql);
 		try {
-			ResultSet subs= subjectConn.executeQuery("select * from "+);
-			ResultSet rs1= scoreConn.executeQuery("select * from cat where rollno='"+userID+"' and sem="+sem+" and cat=1");
-			ResultSet rs2= scoreConn.executeQuery("select * from cat where rollno='"+userID+"' and sem="+sem+" and cat=2");
-			ResultSet rs3= scoreConn.executeQuery("select * from cat where rollno='"+userID+"' and sem="+sem+" and cat=3");
-			while(rs1.next()) {
-				cat1Table.addRow(rs1.getString(""))
+			while(subs.next()) {
+				subj[i]= subs.getString("subname");
+				cc[i]= subs.getString("subcode");
+				cred[i]= Integer.parseInt(subs.getString("credits"));
+				i++;
 			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		catch(Exception e) {
-			JOptionPane.showMessageDialog(null, e.getMessage());
+		ResultSet rs1= scoreConn.executeQuery(q1);
+		ResultSet rs2= scoreConn.executeQuery(q2);
+		ResultSet rs3= scoreConn.executeQuery(q3);
+		ResultSet rs4= scoreConn.executeQuery(s);
+		try {
+			i=0;
+			if(rs1.next()) {
+				while(i<6) {
+				String[] rowdata= {cc[i],subj[i],rs1.getString("sub"+(i+1)),Double.parseDouble(rs1.getString("sub"+(i+1)))>50?"Pass":"Fail"};
+				cat1Table.addRow(rowdata);
+				i++;
+				}
+			}
+			i=0;
+			while(rs2.next()) {
+				String[] rowdata= {cc[i],subj[i],rs1.getString("sub"+(i+1)),Double.parseDouble(rs1.getString("sub"+(i+1)))>50?"Pass":"Fail"};
+				cat2Table.addRow(rowdata);
+				i++;
+			}
+			i=0;
+			while(rs3.next()) {
+				String[] rowdata= {cc[i],subj[i],rs1.getString("sub"+(i+1)),Double.parseDouble(rs1.getString("sub"+(i+1)))>50?"Pass":"Fail"};
+				cat3Table.addRow(rowdata);
+				i++;
+			}
+			while(rs4.next()) {
+				String[] rowdata= {cc[i],subj[i],rs1.getString("sub"+(i+1)),Integer.toString(cred[i]),Double.parseDouble(rs1.getString("sub"+(i+1)))>50?"Pass":"Fail"};
+				semTable.addRow(rowdata);
+				i++;
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
 		}
-		*/
+		
+		
 	}
 
 }

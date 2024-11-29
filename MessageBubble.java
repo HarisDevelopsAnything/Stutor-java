@@ -3,6 +3,7 @@ package stutor;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -29,25 +30,47 @@ public class MessageBubble extends JPanel {
         JLabel timestampLabel = new JLabel(timestamp);
         timestampLabel.setFont(new Font("Arial", Font.ITALIC, 10));
         timestampLabel.setForeground(Color.DARK_GRAY);
-
+        
         // Combine message and timestamp in a bubble
         JPanel bubbleContent = new JPanel();
         bubbleContent.setLayout(new BoxLayout(bubbleContent, BoxLayout.Y_AXIS));
         bubbleContent.setBackground(getBackground());
         String rec="";
+        String send="";
+        	if(senderID.equals("admin")) {
+        		send= "Administrator";
+        		try {
+        			ResultSet rs= userdataConn.executeQuery("SELECT name from common where uid="+receiverID);
+        			if(rs.next());
+					rec= rs.getString("name");
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+        	}
+        	else {
         try {
         	ResultSet rs= userdataConn.executeQuery("SELECT name from common where uid="+receiverID);
+        	ResultSet rs1= userdataConn.executeQuery("SELECT name from common where uid="+senderID);        	
         	if(rs.next()) {
         		rec= rs.getString("name");
         	}
         	else {
         		rec= "Unknown";
         	}
+        	if(rs1.next()) {
+        		send= rs1.getString("name");
+        	}
+        	else
+        	{
+        		send="Unknown";
+        	}
         }
         catch(Exception e) {
         	System.out.println(e.getMessage());
         }
-        bubbleContent.add(isSender?new JLabel("You"):new JLabel(rec));
+        	}
+        bubbleContent.add(isSender?new JLabel("You"):new JLabel(send));
         bubbleContent.add(new JLabel("<html><p> to "+(isSender?rec:"you")+"</p></html>"));
         bubbleContent.add(messageLabel);
         bubbleContent.add(timestampLabel);

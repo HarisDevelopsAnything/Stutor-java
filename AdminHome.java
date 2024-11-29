@@ -5,6 +5,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 import java.awt.event.*;
+import java.beans.Statement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -20,6 +21,7 @@ public class AdminHome extends JFrame {
     static ServerConnector userConn;
     static ServerConnector userdataConn;
     static ServerConnector messageConn;
+    static JScrollPane messageScroll;
     /**
      * Launch the application.
      */
@@ -52,53 +54,6 @@ public class AdminHome extends JFrame {
 
         JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
         contentPane.add(tabbedPane, BorderLayout.CENTER);
-
-        // Dashboard Tab
-        JPanel dashboardPanel = new JPanel();
-        dashboardPanel.setLayout(new BorderLayout());
-        JLabel dashboardLabel = new JLabel("Welcome to Admin Dashboard");
-        dashboardLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        dashboardPanel.add(dashboardLabel, BorderLayout.NORTH);
-        JPanel statsPanel= new JPanel(new GridLayout(12,2));
-        
-        JPanel studentCount= new JPanel();
-        studentCount.add(new JLabel("Total no. of students: "));
-        JLabel noOfStudents= new JLabel("0");
-        studentCount.add(noOfStudents);
-        
-        JPanel teacherCount= new JPanel();
-        teacherCount.add(new JLabel("Total no. of teachers: "));
-        JLabel noOfTeachers= new JLabel("0");
-        teacherCount.add(noOfTeachers);
-        
-        JPanel studentLoginCount= new JPanel();
-        studentLoginCount.add(new JLabel("Currently logged in students: "));
-        JLabel noOfLnStudents= new JLabel("0");
-        studentLoginCount.add(noOfLnStudents);
-        
-        JPanel teacherLoginCount= new JPanel();
-        teacherLoginCount.add(new JLabel("Total no. of teachers: "));
-        JLabel noOfLnTeachers= new JLabel("0");
-        teacherLoginCount.add(noOfLnTeachers);
-        
-        statsPanel.add(studentCount);
-        statsPanel.add(studentLoginCount);
-        statsPanel.add(teacherCount);
-        statsPanel.add(teacherLoginCount);
-        Component[] components = statsPanel.getComponents();
-        
-        // Loop through each component
-        for (Component comp : components) {
-            // Check if the component is a JLabel
-            if (comp instanceof JLabel) {
-                JLabel label = (JLabel) comp;
-                label.setFont(new Font("Tahoma", Font.PLAIN, 30)); // Set the font
-            }
-        }
-        
-        dashboardPanel.add(statsPanel, BorderLayout.CENTER);
-        
-        tabbedPane.addTab("Dashboard", null, dashboardPanel, "Admin Dashboard");
 
         // User Management Tab
         JPanel userManagementPanel = new JPanel();
@@ -151,6 +106,11 @@ public class AdminHome extends JFrame {
             }
         });
         JButton removeUserButton = new JButton("Remove User");
+        removeUserButton.addActionListener(new ActionListener() {
+        	public void actionPerformed(ActionEvent e) {
+        		deleteUser();
+        	}
+        });
         JButton refreshUsersButton = new JButton("↻");
         refreshUsersButton.addActionListener(new ActionListener() {
         	public void actionPerformed(ActionEvent e) {
@@ -171,13 +131,13 @@ public class AdminHome extends JFrame {
         // Messaging Tab
         JPanel messagingPanel = new JPanel();
         messagingPanel.setLayout(new BorderLayout());
-
+        
         // message area to show bubbles
         messages = new JPanel(new VerticalFlowLayout(10));
         
-        JScrollPane messageScrollPane = new JScrollPane(messages);
-        messagingPanel.add(messageScrollPane, BorderLayout.CENTER);
-
+        messageScroll = new JScrollPane(messages);
+        messagingPanel.add(messageScroll, BorderLayout.CENTER);
+        refreshMessages();
         // Send Message Button
         JPanel messagingButtonsPanel = new JPanel();
         JTextField userID= new JTextField(5);
@@ -193,10 +153,11 @@ public class AdminHome extends JFrame {
                 } else {
                     sendMessage(userID.getText(),messageInput.getText());
                     JOptionPane.showMessageDialog(AdminHome.this, "Message sent successfully!");
+                    refreshMessages();
                 }
             }
         });
-        refreshMessages();
+        
         messagingButtonsPanel.add(new JLabel("User ID: "));
         messagingButtonsPanel.add(userID);
         messagingButtonsPanel.add(new JLabel("Message"));
@@ -213,6 +174,7 @@ public class AdminHome extends JFrame {
         contentPane.add(adminLabel, BorderLayout.NORTH);
     }
     public void refreshMessages() {
+    	messages.removeAll();
     	ResultSet rs = messageConn.executeQuery("SELECT * from messages where rec='admin' OR sender='admin';");
     	try {
 	    	while(rs.next()) {
@@ -222,6 +184,8 @@ public class AdminHome extends JFrame {
     	catch(Exception e) {
     		System.out.println(e.getMessage());
     	}
+    	messages.revalidate();
+    	GUIMisc.scrollToBottom(messageScroll);
     }
     public void sendMessage(String userID, String message) {
     	if(userID.length()==5 && message.length()!=0) {
@@ -247,6 +211,25 @@ public class AdminHome extends JFrame {
     		
     	}
     }
+    static void deleteUser() {
+    	String du= JOptionPane.showInputDialog("Enter the ID to delete: ");
+		String query= "DELETE FROM users WHERE userid='"+du+"';";
+		try {
+			ResultSet rs= userdataConn.executeQuery("SELECT * from common WHERE uid='"+du+"';");
+			if(!rs.next()) {
+				JOptionPane.showMessageDialog(null, "No such user!");
+				return;
+			}
+			String usertype= (rs.getString("type").equals("S")?"student":"teacher");
+			userConn.executeUpdates("DELETE from "+usertype+"s where id="+du);
+			userdataConn.executeUpdates("DELETE from "+usertype+" where rollno="+du);
+			userdataConn.executeUpdates("DELETE from common where uid="+du);
+			JOptionPane.showMessageDialog(null, "User "+du+" deleted!");
+		}
+		catch(Exception e) {
+			JOptionPane.showMessageDialog(null, e.getMessage());
+		}
+	}
     public void refreshUsers() {
     	userTable.setRowCount(0); //empty table
     	try {

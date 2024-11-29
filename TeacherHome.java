@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -53,6 +54,8 @@ public class TeacherHome extends JFrame {
 	static ServerConnector fileConn= null;
 	static DefaultTableModel attendanceTable;
 	static DefaultTableModel notesTable;
+	static JScrollPane messageScroll;
+	static JTextField rollNoInput;
 	static JPanel messages;
 	static File selectedFile= null;
 
@@ -79,6 +82,15 @@ public class TeacherHome extends JFrame {
 		teacherConn= new ServerConnector("user_data");
 		attendConn= new ServerConnector("attendance");
 		fileConn= new ServerConnector("files");
+		ResultSet rs2= teacherConn.executeQuery("SELECT * from common WHERE uid="+userID);
+		try {
+			if(rs2.next()) {
+				username= rs2.getString("name");
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 544, 317);
 		contentPane = new JPanel();
@@ -136,11 +148,12 @@ public class TeacherHome extends JFrame {
 		// Classroom Tab Code (Add the following to the TeacherHome constructor)
 
 		// Panel for Classroom Tab
+		
 		JPanel panel_1 = new JPanel();
 		panel_1.setLayout(new BorderLayout());  // Using BorderLayout for easy component placement
 		messages= new JPanel(new VerticalFlowLayout(10));
-		JScrollPane jsp= new JScrollPane(messages);
-		panel_1.add(jsp, BorderLayout.CENTER);
+		messageScroll= new JScrollPane(messages);
+		panel_1.add(messageScroll, BorderLayout.CENTER);
 		// ComboBox for recipient selection (A, B, C, or DM)
 		JComboBox<String> recipientComboBox = new JComboBox<>();
 		JTextField studentIDField= new JTextField(8);
@@ -284,7 +297,7 @@ public class TeacherHome extends JFrame {
 		            }
 
 		            // Create the table with new data (file names, dates, and buttons)
-		            String[] columnNames = {"Name", "Date of Upload", "Action"};
+		            String[] columnNames = {"Name", "Date of Upload"};
 		            notesTable = new DefaultTableModel(notesData, columnNames);
 
 		            // JTable setup
@@ -292,8 +305,7 @@ public class TeacherHome extends JFrame {
 		            nt.setDefaultEditor(Object.class, null); // Disable cell editing
 
 		            // Make sure the action buttons (Open File) are displayed correctly
-		            nt.getColumnModel().getColumn(2).setCellRenderer(new ButtonRenderer());
-		            nt.getColumnModel().getColumn(2).setCellEditor(new ButtonEditor(new JCheckBox()));
+		            
 
 		            // Wrap the table in a JScrollPane and add it to the panel
 		            JScrollPane scrollPane = new JScrollPane(nt);
@@ -394,72 +406,171 @@ public class TeacherHome extends JFrame {
 		catch(SQLException e) {
 			JOptionPane.showMessageDialog(null, e.getMessage());
 		}
+		// Attendance Tab
 		JPanel panel_5 = new JPanel();
 		panel_5.setLayout(new BorderLayout());
-		panel_5.add(new JLabel("Student attendance"), BorderLayout.NORTH);
-		JPanel centre5= new JPanel(new GridLayout());
-		JPanel studentIn = new JPanel();
-		centre5.add(studentIn);
-		studentIn.add(new JLabel("Enter the roll no.: "));
-		JTextField rollNoInput = new JTextField(8);
-		studentIn.add(rollNoInput);
-		JButton getAttendance = new JButton("Get details");
-		getAttendance.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				refreshAttendance(rollNoInput.getText());
-			}
-		});
-		studentIn.add(getAttendance);
-		
-		panel_5.add(centre5);
-		String cols[]= {"Date","H1","H2","H3","H4","H5","H6","H7","H8"};
+		panel_5.add(new JLabel("Student Attendance"), BorderLayout.NORTH);
+
+		// Attendance Filter Panel
+		JPanel filterPanel = new JPanel(new FlowLayout());
+		JComboBox<Integer> semChoose1 = new JComboBox<>();
+		for (int i = 1; i <= 8; i++) semChoose1.addItem(i);
+		filterPanel.add(new JLabel("Semester: "));
+		filterPanel.add(semChoose1);
+
+		rollNoInput = new JTextField(8);
+		filterPanel.add(new JLabel("Enter Roll No.: "));
+		filterPanel.add(rollNoInput);
+
+		JButton getAttendance = new JButton("Get Details");
+		filterPanel.add(getAttendance);
+		panel_5.add(filterPanel, BorderLayout.NORTH);
+
+		// Attendance Table
+		String cols[] = {"Date", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8"};
 		attendanceTable = new DefaultTableModel(null, cols);
-		//actually updating attendance
-		try {
-			ResultSet rs= attendConn.executeQuery("SELECT * from student_attendance WHERE rollno="+userID);
-			while(rs.next()) {
-				System.out.println(rs);
-				Object row[]= {rs.getString("class_date"), rs.getString("p1"), rs.getString("p2"), rs.getString("p3"), rs.getString("p4"), rs.getString("p5"), rs.getString("p6"), rs.getString("p7"), rs.getString("p8")};
-				attendanceTable.addRow(row);
-			}
-		}
-		catch(SQLException e) {
-			JOptionPane.showMessageDialog(null, e.getMessage());
-		}
-		JTable jt = new JTable(attendanceTable);
-		JScrollPane jsp1= new JScrollPane(jt);
-		centre5.add(jsp1);
+		JTable attendanceTableUI = new JTable(attendanceTable);
+		attendanceTableUI.setDefaultEditor(Object.class, null); // Initially non-editable
+
+		JScrollPane jsp1 = new JScrollPane(attendanceTableUI);
+		panel_5.add(jsp1, BorderLayout.CENTER);
+
+		// Save Changes Button
+		JButton saveChangesButton = new JButton("Save Changes");
+		panel_5.add(saveChangesButton, BorderLayout.SOUTH);
+
 		tabbedPane.addTab("Attendance", null, panel_5, null);
-		
-		
-		
-		JLabel lblWelcomeBackUser = new JLabel("Dr. "+username + " | Teacher");
-		contentPane.add(lblWelcomeBackUser, BorderLayout.NORTH);
+
+		// Add Action Listeners
+		getAttendance.addActionListener(e -> {
+		    String rollNo = rollNoInput.getText();
+		    int semester = (Integer) semChoose1.getSelectedItem();
+		    if (!rollNo.isEmpty()) {
+		        refreshAttendance(rollNo, semester);
+		        attendanceTableUI.setDefaultEditor(Object.class, new DefaultCellEditor(new JTextField())); // Enable editing
+		    } else {
+		        JOptionPane.showMessageDialog(this, "Please enter a valid roll number.");
+		    }
+		});
+
+		saveChangesButton.addActionListener(e -> {
+		    saveAttendanceChanges(rollNoInput.getText(), (Integer) semChoose1.getSelectedItem());
+		});
 	}
-	private void refreshTestsTable() {
-		// TODO Auto-generated method stub
-		
+		// Refresh Attendance Method
+	void refreshAttendance(String rno, int sem) {
+	    try {
+	    	addEmptyAttendance(rno,sem);
+	        // Clear the table first
+	        attendanceTable.setRowCount(0);
+
+	        // Get the latest date from the attendance data
+	        ResultSet rs = attendConn.executeQuery("SELECT MAX(class_date) AS last_date FROM student_attendance WHERE rollno='" + rno + "' AND sem="+sem);
+	        String lastDate = null;
+	        if (rs.next()) {
+	            lastDate = rs.getString("last_date");
+	        }
+
+	        // Get the current date (today)
+	        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+	        String currentDate = sdf.format(new Date());
+
+	        // Add attendance for existing dates
+	        ResultSet attendanceResult = attendConn.executeQuery("SELECT * FROM student_attendance WHERE rollno='" + rno + "' AND sem="+sem+" AND class_date >= '" + lastDate + "' AND class_date <= '" + currentDate + "' ORDER BY class_date");
+	        while (attendanceResult.next()) {
+	            Object row[] = {attendanceResult.getString("class_date"),
+	                            attendanceResult.getString("p1"),
+	                            attendanceResult.getString("p2"),
+	                            attendanceResult.getString("p3"),
+	                            attendanceResult.getString("p4"),
+	                            attendanceResult.getString("p5"),
+	                            attendanceResult.getString("p6"),
+	                            attendanceResult.getString("p7"),
+	                            attendanceResult.getString("p8")};
+	            attendanceTable.addRow(row);
+	        }
+
+	        // Add rows for dates between last recorded date and today (for empty attendance)
+	        // You can use a loop to add these rows
+	        LocalDate startDate = LocalDate.parse(lastDate);
+	        LocalDate endDate = LocalDate.parse(currentDate);
+
+	        while (startDate.isBefore(endDate)) {
+	            startDate = startDate.plusDays(1);
+	            String formattedDate = startDate.toString();  // "yyyy-MM-dd"
+	            Object emptyRow[] = {formattedDate, "-", "-", "-", "-", "-", "-", "-", "-"};
+	            
+	            attendanceTable.addRow(emptyRow);
+	        }
+
+	        // Refresh the table view
+	        JScrollPane jsp1 = new JScrollPane(new JTable(attendanceTable));
+	        // Add the JScrollPane to the panel if required
+
+	    } catch (SQLException e) {
+	        JOptionPane.showMessageDialog(null, e.getMessage());
+	    }
 	}
 
-	private void refreshAssignmentsTable() {
-		// TODO Auto-generated method stub
-		
-	}
+	void addEmptyAttendance(String rno, int sem) {
+	    try {
+	        // Get the latest date from the attendance data
+	        ResultSet rs = attendConn.executeQuery("SELECT MAX(class_date) AS last_date FROM student_attendance WHERE rollno='" + rno + "'");
+	        String lastDate = null;
+	        if (rs.next()) {
+	            lastDate = rs.getString("last_date");
+	        }
 
-	void refreshAttendance(String rno) {
-		try {
-			attendanceTable.setRowCount(0);
-			ResultSet rs= attendConn.executeQuery("SELECT * from student_attendance WHERE rollno='"+rno+"'");
-			while(rs.next()) {
-				System.out.println(rs);
-				String row[]= {rs.getString("class_date"), rs.getString("p1"), rs.getString("p2"), rs.getString("p3"), rs.getString("p4"), rs.getString("p5"), rs.getString("p6"), rs.getString("p7"), rs.getString("p8")};
-				attendanceTable.addRow(row);
-			}
-		}
-		catch(SQLException e) {
-			JOptionPane.showMessageDialog(null, e.getMessage());
-		}
+	        // Get the current date (today)
+	        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+	        String currentDate = sdf.format(new Date());
+
+	        // Get the start and end dates (last recorded date and current date)
+	        LocalDate startDate = LocalDate.parse(lastDate);
+	        LocalDate endDate = LocalDate.parse(currentDate);
+
+	        // Insert empty attendance records for dates from the last date to today
+	        while (startDate.isBefore(endDate)) {
+	            startDate = startDate.plusDays(1);
+	            String formattedDate = startDate.toString();  // "yyyy-MM-dd"
+
+	            // Prepare the insert query for empty attendance (with "-" for each period)
+	            String insertQuery = "INSERT INTO student_attendance (sem, rollno, class_date, p1, p2, p3, p4, p5, p6, p7, p8) " +
+	                                 "VALUES ("+sem+", '" + rno + "', '" + formattedDate + "', '-', '-', '-', '-', '-', '-', '-', '-')";
+
+	            // Execute the insert query
+	            attendConn.executeUpdates(insertQuery);
+	        }
+
+	        
+
+	    } catch (SQLException e) {
+	        JOptionPane.showMessageDialog(null, e.getMessage());
+	    }
 	}
+		// Save Attendance Changes Method
+		void saveAttendanceChanges(String rollNo, int semester) {
+		    for (int i = 0; i < attendanceTable.getRowCount(); i++) {
+		        String date = (String) attendanceTable.getValueAt(i, 0);
+		        String[] hours = new String[8];
+		        for (int j = 1; j <= 8; j++) {
+		            hours[j - 1] = (String) attendanceTable.getValueAt(i, j);
+		        }
+		        try {
+			        String query = String.format(
+					    "UPDATE student_attendance SET p1='%s', p2='%s', p3='%s', p4='%s', p5='%s', p6='%s', p7='%s', p8='%s' " +
+					    "WHERE rollno='%s' AND sem=%d AND cdate='%s'",
+					    hours[0], hours[1], hours[2], hours[3], hours[4], hours[5], hours[6], hours[7], rollNo, semester, date
+					);
+					attendConn.executeUpdates(query);
+		        }
+		        catch(Exception e) {
+		        	System.err.println(e.getMessage());
+		        }
+		    }
+		    JOptionPane.showMessageDialog(null, "Attendance updated successfully!");
+		}
+
 	public void refreshMessages() {
     	ResultSet rs = fileConn.executeQuery("SELECT * from messages where rec='"+userID+"' OR sender='"+userID+"';");
     	try {
@@ -470,6 +581,8 @@ public class TeacherHome extends JFrame {
     	catch(Exception e) {
     		System.out.println(e.getMessage());
     	}
+    	messages.revalidate();
+    	GUIMisc.scrollToBottom(messageScroll);
     }
     public void sendMessage(String userID, String message) {
     	System.out.println(userID+" "+message);
